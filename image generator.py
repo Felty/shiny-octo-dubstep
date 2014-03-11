@@ -4,8 +4,10 @@ from PIL import Image
 from PIL import ImageDraw
 from random import randint
 
-xres = 720
+xres = 720  		#resolution and breakout settings, breakouts are the current deadend avoidance method
 yres = 480
+break_out_max = 1000
+
 
 im = Image.new("RGB", (xres, yres), "white")
 draw = ImageDraw.Draw(im)
@@ -14,7 +16,7 @@ xmid = int(xres * 0.5)
 ymid = int(yres * 0.5)
 hubpixel = (xmid, ymid)
 
-def Spinner(hubpixel):
+def spinner(hubpixel):
 	"""Points to a pixel bordering the seed pixel"""
 	spin = randint(0, 7)
 	xpoint = hubpixel[0]
@@ -55,20 +57,29 @@ def Spinner(hubpixel):
 		#bottom right
 		ypoint += 1
 		xpoint += 1
-	else:
-		print "DANGER DANGER, ERROR IN THE SPINNER" #fun with debugging
-		print "SPIN VALUE OF:" + str(spin)
+	
+
 
 	if xpoint in range(1, int(xres-1)) and ypoint in range(1, int(yres-1)):
 		return (xpoint, ypoint)
 
+	elif xpoint < 1:
+		xpoint = 1
+		return (xpoint, ypoint)
+	elif xpoint >= xres:
+		xpoint = xres-2
+		return (xpoint, ypoint)
+	elif ypoint < 1:
+		ypoint = 1
+		return (xpoint, ypoint)
+	elif ypoint >= yres:
+		ypoint = yres-2
+		return (xpoint, ypoint)
 	else: 
-		print "Looks like the wall has been hit"
-		print (xpoint, ypoint)
-		return "Wall"
+		return (xpoint, ypoint)
 
 
-def ChooseColor(hubpixel):
+def choose_color(hubpixel):
 	"""Generates color for new pixel and returns it as an RGB tuple"""
 	RGBlst= list(im.getpixel(hubpixel)) 
 
@@ -79,7 +90,7 @@ def ChooseColor(hubpixel):
 			RGBlst[i] -= randint(0, 10)
 	return tuple(RGBlst)
 
-def RemainingWhite(hubpixel):
+def remaining_white(hubpixel):
 	"""Cycles through each neighboring pixel and returns True if at least one is white.""" 
 	xpoint = hubpixel[0]
 	ypoint = hubpixel[1]
@@ -94,35 +105,47 @@ def RemainingWhite(hubpixel):
 	if checker == 8:
 		return False
 
-
+def breakout(hubpixel):
+	newpixel = spinner(hubpixel)
+	newerpixel = spinner(newpixel)
+	breakingpixel = spinner(newerpixel)
+	if im.getpixel(newerpixel) == (255, 255, 255):
+		return newerpixel
+	elif im.getpixel(breakingpixel) == (255, 255, 255):
+		return breakingpixel
+	else:
+		for i in range(0,10):
+			breakoutpixel = spinner(breakingpixel)
+			if im.getpixel(breakoutpixel) == (255, 255, 255):
+				return breakoutpixel
+		else:
+			return breakoutpixel
+breakcount = 0
 TrackingBeacon = 0
-newpixel = Spinner(hubpixel)
-while newpixel != "Wall":
-	count = 0
+newpixel = spinner(hubpixel)
 
-	if TrackingBeacon >= 500:
+while breakcount < break_out_max:
+
+	count = 0
+	TrackingBeacon += 1
+	if TrackingBeacon >= 5:
 		print "Spinning around the vicinity of" + str(hubpixel)
 		TrackingBeacon = 0
-	while count < 4 and newpixel != "Wall":
+	
+	while count < 40:
 		if im.getpixel(newpixel) == (255, 255, 255): #Checking to see if the pixel is white/unpainted
-			draw.point(newpixel, fill=ChooseColor(hubpixel)) #painting the pixel
+			draw.point(newpixel, fill=choose_color(hubpixel)) #painting the pixel
 		hubpixel = newpixel
 		count += 1
-	 	newpixel = Spinner(hubpixel)
-
-	else:
-		TrackingBeacon += 1
-	while RemainingWhite(hubpixel) and newpixel != "Wall":
-		if im.getpixel(newpixel) == (255, 255, 255): 
-			draw.point(newpixel, fill=ChooseColor(hubpixel))
-		newpixel = Spinner(hubpixel)
-	else:
-		hubpixel = newpixel #Don't delete/move this or it'll probably enter an infinite loop.
-		if hubpixel != "Wall":
-			newpixel = Spinner(hubpixel)
-			
-		else:
-			break
+	 	newpixel = spinner(hubpixel)
+	 	
+	if remaining_white(hubpixel) == False:
+	 	newpixel = breakout(hubpixel)
+		print "BREAKOUT! " + str(breakcount) + "/" + str(break_out_max)
+		breakcount += 1
+	#add breakout function here.	
+		
+	
 
 
 
