@@ -4,10 +4,11 @@ from PIL import Image
 from PIL import ImageDraw
 from random import randint
 
-xres = 720  		#resolution and breakout settings, breakouts are the current deadend avoidance method
+xres = 720 		#resolution settings
 yres = 480
-break_out_max = 1000
-
+break_out_max = 5000		#break outs are the dead-end avoidance function, more breakouts = more colored pixels
+break_out_max_depth = 30	#maximum distance the break out will jump in search of blank space.  Not a complete search.
+color_shift = 5		#maximum color shift between pixels.  RGB values are 0-255
 
 im = Image.new("RGB", (xres, yres), "white")
 draw = ImageDraw.Draw(im)
@@ -66,13 +67,13 @@ def spinner(hubpixel):
 	elif xpoint < 1:
 		xpoint = 1
 		return (xpoint, ypoint)
-	elif xpoint >= xres:
+	elif xpoint >= xres-1:
 		xpoint = xres-2
 		return (xpoint, ypoint)
 	elif ypoint < 1:
 		ypoint = 1
 		return (xpoint, ypoint)
-	elif ypoint >= yres:
+	elif ypoint >= yres-1:
 		ypoint = yres-2
 		return (xpoint, ypoint)
 	else: 
@@ -84,10 +85,10 @@ def choose_color(hubpixel):
 	RGBlst= list(im.getpixel(hubpixel)) 
 
 	for i in range(0,3): 	
-		if randint(0, 1) == 0 and RGBlst[i] <= 245 or RGBlst[i] <= 10:     
-			RGBlst[i] += randint(0, 10)
+		if randint(0, 1) == 0 and RGBlst[i] <= (255 - color_shift) or RGBlst[i] <= (0 + color_shift) :     
+			RGBlst[i] += randint(0, color_shift)
 		else:
-			RGBlst[i] -= randint(0, 10)
+			RGBlst[i] -= randint(0, color_shift)
 	return tuple(RGBlst)
 
 def remaining_white(hubpixel):
@@ -106,20 +107,20 @@ def remaining_white(hubpixel):
 		return False
 
 def breakout(hubpixel):
-	newpixel = spinner(hubpixel)
-	newerpixel = spinner(newpixel)
-	breakingpixel = spinner(newerpixel)
-	if im.getpixel(newerpixel) == (255, 255, 255):
-		return newerpixel
-	elif im.getpixel(breakingpixel) == (255, 255, 255):
-		return breakingpixel
+	newpixel = hubpixel
+	for each in range(0, break_out_max_depth):
+		newpixel = spinner(newpixel)
+		if im.getpixel(newpixel) == (255, 255, 255):
+			return newpixel
 	else:
 		for i in range(0,10):
-			breakoutpixel = spinner(breakingpixel)
+			breakoutpixel = spinner(newpixel)
 			if im.getpixel(breakoutpixel) == (255, 255, 255):
 				return breakoutpixel
-		else:
-			return breakoutpixel
+			else:
+				return breakoutpixel
+
+
 breakcount = 0
 TrackingBeacon = 0
 newpixel = spinner(hubpixel)
@@ -128,7 +129,7 @@ while breakcount < break_out_max:
 
 	count = 0
 	TrackingBeacon += 1
-	if TrackingBeacon >= 5:
+	if TrackingBeacon >= 20:
 		print "Spinning around the vicinity of" + str(hubpixel)
 		TrackingBeacon = 0
 	
@@ -138,12 +139,17 @@ while breakcount < break_out_max:
 		hubpixel = newpixel
 		count += 1
 	 	newpixel = spinner(hubpixel)
-	 	
+	 	if count % 6 == 0:
+	 		for i in range(0,4):
+	 			if im.getpixel(newpixel) == (255, 255, 255): 
+					draw.point(newpixel, fill=choose_color(hubpixel))
+				newpixel = spinner(hubpixel)
 	if remaining_white(hubpixel) == False:
 	 	newpixel = breakout(hubpixel)
-		print "BREAKOUT! " + str(breakcount) + "/" + str(break_out_max)
+		if breakcount % 10 == 0:
+			print "BREAKOUT! " + str(breakcount) + "/" + str(break_out_max)
 		breakcount += 1
-	#add breakout function here.	
+	
 		
 	
 
